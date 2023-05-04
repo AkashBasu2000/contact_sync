@@ -1,9 +1,9 @@
 import 'package:contact_sync/contact_model.dart';
 import 'package:flutter/material.dart';
-import 'contact_utility.dart';
 import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:path_provider/path_provider.dart';
+import 'contact_fetch.dart';
+import 'database.dart';
 
 void main() {
   runApp(const MyApp());
@@ -12,7 +12,6 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({Key? key}) : super(key: key);
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -41,23 +40,23 @@ class _MyHomePageState extends State<MyHomePage> {
   late Box localContactsBox;
   bool localContactsBoxInitialized = false;
   final String customerHash = 'WMSSPSKGYSFJ';
+  final Database databaseHelper = Database();
+  ContactFetch contactFetchHelper = ContactFetch();
 
   @override
   void initState() {
     super.initState();
     Hive.registerAdapter(LocalContactAdapter());
-    _openBox();
+    contactFetchHelper.openBox().then((value){
+      setState(() {
+        localContactsBoxInitialized = true;
+        localContactsBox = value;
+      });
+    });
+
   }
 
-  void _openBox() async {
-    var dir = await getApplicationDocumentsDirectory();
-    Hive.init(dir.path);
-    localContactsBox = await Hive.openBox('localContactBox');
-    setState(() {
-      localContactsBoxInitialized = true;
-    });
-    print('Box opened');
-  }
+
 
 
   Future<void> _updateBox() async {
@@ -65,7 +64,7 @@ class _MyHomePageState extends State<MyHomePage> {
       localContactsBoxInitialized = false;
     });
     // await updateBox(localContactsBox);
-    await sync(localContactsBox, customerHash);
+    await databaseHelper.sync(localContactsBox, customerHash);
     setState((){
       localContactsBoxInitialized = true;
       //sync(localContactsBox, customerHash);
@@ -85,7 +84,7 @@ class _MyHomePageState extends State<MyHomePage> {
             child: ListView(
               shrinkWrap: true,
               children: (localContactsBoxInitialized == true)
-                  ? contactsScroll(getContactsFromBox(localContactsBox))
+                  ? databaseHelper.contactsScroll(databaseHelper.getContactsFromBox(localContactsBox))
                   : [Container(
                 color: Colors.white,
                 child: const Center(
